@@ -1,1 +1,205 @@
-# FB-13.0.1
+<!-- HTML ملف كامل -->
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FB-13 | استوديو أنمي احترافي</title>
+  <style>
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: linear-gradient(to bottom, #0a0a0a, #1a1a1a);
+      color: white;
+      padding: 30px;
+    }
+    h1, h2, h3 {
+      color: #00ffee;
+      text-shadow: 0 0 5px #00ffee;
+    }
+    input, textarea, select, button {
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 10px;
+      border: none;
+      box-shadow: 0 0 10px rgba(0,255,238,0.2);
+      font-size: 16px;
+    }
+    button {
+      background-color: #00ffee;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #00c6b0;
+    }
+    .char-box {
+      background: #121212;
+      border: 1px solid #00ffee55;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    #result, #episodesList {
+      margin-top: 30px;
+      padding: 20px;
+      background: #222;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,255,238,0.2);
+    }
+    video {
+      width: 100%;
+      max-width: 720px;
+      border-radius: 15px;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <div style="text-align:center">
+    <h1>FB-13 | استوديو أنمي احترافي</h1>
+    <p>أنشئ حلقات أنمي مذهلة باستخدام الذكاء الاصطناعي</p>
+  </div>
+
+  <h2>إنشاء حلقة أنمي</h2>
+  <label>عنوان الحلقة:</label>
+  <input type="text" id="episode_title" placeholder="اكتب عنوان الحلقة">
+
+  <label>قصة الحلقة:</label>
+  <textarea id="episode_story" rows="5" placeholder="اكتب القصة بالتفصيل..."></textarea>
+
+  <label>نوع الأنمي:</label>
+  <input type="text" id="animation_type" placeholder="أكشن، دراما، خيال علمي...">
+
+  <label>مستوى التأثيرات:</label>
+  <select id="effects_level">
+    <option value="full">كامل (مؤثرات وصوت)</option>
+    <option value="effects_only">مؤثرات فقط</option>
+    <option value="no_effects">بدون مؤثرات</option>
+  </select>
+
+  <label>نوع الحركة:</label>
+  <select id="motion_type">
+    <option value="simple">حركة سلسة</option>
+    <option value="complex">حركة معقدة</option>
+    <option value="pro">احترافي جداً (مثل Attack on Titan)</option>
+  </select>
+
+  <h3>الشخصيات (حتى 15):</h3>
+  <div id="characterFields"></div>
+  <button onclick="generateAnime()">إنشاء الحلقة</button>
+
+  <div id="result"></div>
+
+  <h2>الحلقات السابقة:</h2>
+  <div id="episodesList"></div>
+
+  <script>
+    const apiKey = "YOUR_IMGBB_API_KEY"; // ضع مفتاح API الخاص بك من imgbb هنا
+
+    for (let i = 1; i <= 15; i++) {
+      const box = document.createElement('div');
+      box.className = 'char-box';
+      box.innerHTML = `
+        <h4>شخصية ${i}</h4>
+        <input type="text" placeholder="اسم الشخصية" id="char_name_${i}">
+        <input type="text" placeholder="الوصف" id="char_desc_${i}">
+        <input type="file" accept="image/*" id="char_img_${i}">
+      `;
+      document.getElementById('characterFields').appendChild(box);
+    }
+
+    window.onload = () => {
+      const saved = JSON.parse(localStorage.getItem("episodes")) || [];
+      saved.forEach(e => addEpisodeToList(e.title, e.url));
+    };
+
+    function addEpisodeToList(title, url) {
+      const ep = document.createElement('div');
+      ep.innerHTML = `
+        <h3>${title}</h3>
+        <video controls src="${url}"></video>
+        <a href="${url}" download><button>تحميل الحلقة</button></a>
+        <hr>
+      `;
+      document.getElementById('episodesList').prepend(ep);
+    }
+
+    async function generateAnime() {
+      const title = document.getElementById('episode_title').value.trim();
+      const story = document.getElementById('episode_story').value.trim();
+      if (!title || !story) {
+        alert("يرجى إدخال عنوان وقصة الحلقة.");
+        return;
+      }
+
+      const characters = [];
+      for (let i = 1; i <= 15; i++) {
+        const name = document.getElementById(`char_name_${i}`).value;
+        const desc = document.getElementById(`char_desc_${i}`).value;
+        const img = document.getElementById(`char_img_${i}`).files[0];
+
+        if (name && img) {
+          const url = await uploadImage(img);
+          characters.push({ name, description: desc, image_url: url });
+        }
+      }
+
+      const data = {
+        episode_title: title,
+        episode_story: story,
+        animation_type: document.getElementById('animation_type').value,
+        effects_mode: document.getElementById('effects_level').value,
+        motion_type: document.getElementById('motion_type').value,
+        characters
+      };
+
+      document.getElementById('result').innerHTML = "<p>جارٍ إنشاء الحلقة، يرجى الانتظار...</p>";
+
+      try {
+        const res = await fetch('https://fb13-anime.com/api/generate-episode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (result.status === 'success') {
+          const url = result.video_url;
+          addEpisodeToList(title, url);
+
+          document.getElementById('result').innerHTML = `
+            <h3>تم إنشاء الحلقة بنجاح!</h3>
+            <video controls src="${url}"></video>
+            <a href="${url}" download><button>تحميل الحلقة الآن</button></a>
+          `;
+
+          const old = JSON.parse(localStorage.getItem("episodes")) || [];
+          old.unshift({ title, url });
+          localStorage.setItem("episodes", JSON.stringify(old));
+        } else {
+          document.getElementById('result').innerHTML = `<p>خطأ: ${result.message}</p>`;
+        }
+      } catch (error) {
+        document.getElementById('result').innerHTML = `<p>فشل الاتصال بالخادم.</p>`;
+      }
+    }
+
+    async function uploadImage(file) {
+      const fd = new FormData();
+      fd.append("image", file);
+
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+        method: "POST",
+        body: fd
+      });
+
+      const json = await res.json();
+      return json.data.url;
+    }
+  </script>
+</body>
+</html>
